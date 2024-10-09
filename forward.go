@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -36,9 +37,10 @@ const (
 type Forward struct {
 	concurrent int64 // atomic counters need to be first in struct for proper alignment
 
-	proxies    []*proxy.Proxy
-	p          Policy
-	hcInterval time.Duration
+	proxies           []*proxy.Proxy
+	p                 Policy
+	spr_policy_target string
+	hcInterval        time.Duration
 
 	from    string
 	ignored []string
@@ -91,6 +93,19 @@ func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	state := request.Request{W: w, Req: r}
 	if !f.match(state) {
 		return plugin.NextOrFailure(f.Name(), f.Next, ctx, w, r)
+	}
+
+	//if forward is configured with a spr_policy,
+	// then only serve if the client has a matching dns policy
+	if f.spr_policy_target != "" {
+		type policyTagKey string
+		k := policyTagKey("DNSPolicies")
+		v := ctx.Value(k)
+		if dnsPolicies, ok := v.([]string); ok {
+			if !slices.Contains(dnsPolicies, f.spr_policy_target) {
+				return plugin.NextOrFailure(f.Name(), f.Next, ctx, w, r)
+			}
+		}
 	}
 
 	if f.maxConcurrent > 0 {

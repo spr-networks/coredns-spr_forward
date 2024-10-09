@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coredns/caddy"
@@ -276,6 +277,15 @@ func parseBlock(c *caddy.Controller, f *Forward) error {
 		default:
 			return c.Errf("unknown policy '%s'", x)
 		}
+	case "spr_policy":
+		if !c.NextArg() {
+			return c.ArgErr()
+		}
+		x := c.Val()
+		if !strings.HasPrefix(x, "dns:") {
+			return c.Errf("unknown policy '%s' must start with dns:", x)
+		}
+		f.spr_policy_target = x
 	case "max_concurrent":
 		if !c.NextArg() {
 			return c.ArgErr()
