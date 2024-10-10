@@ -98,9 +98,7 @@ func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	//if forward is configured with a spr_policy,
 	// then only serve if the client has a matching dns policy
 	if f.spr_policy_target != "" {
-		type policyTagKey string
-		k := policyTagKey("DNSPolicies")
-		v := ctx.Value(k)
+		v := ctx.Value("DNSPolicies")
 		skip_forward := false
 
 		if dnsPolicies, ok := v.([]string); ok {
