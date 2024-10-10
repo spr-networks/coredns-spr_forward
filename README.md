@@ -1,5 +1,9 @@
 # forward
 
+# Supernetworks Support
+
+* Forward can accept a "spr_policy" with a policy name to decide if this forward is used by a client or not
+
 ## Name
 
 *forward* - facilitates proxying DNS messages to upstream resolvers.
@@ -48,6 +52,7 @@ forward FROM TO... {
     tls CERT KEY CA
     tls_servername NAME
     policy random|round_robin|sequential
+    spr_policy POLICY_NAME
     health_check DURATION [no_rec] [domain FQDN]
     max_concurrent MAX
 }
@@ -84,6 +89,7 @@ forward FROM TO... {
   * `random` is a policy that implements random upstream selection.
   * `round_robin` is a policy that selects hosts based on round robin ordering.
   * `sequential` is a policy that selects hosts based on sequential ordering.
+* `spr_policy` specifies a dns policy for whether or not a client should proxy into this forward plugin, when the client has a dns policy context set by spr's coredns-block module
 * `health_check` configure the behaviour of health checking of the upstream servers
   * `<duration>` - use a different duration for health checking, the default duration is 0.5s.
   * `no_rec` - optional argument that sets the RecursionDesired-flag of the dns-query used in health checking to `false`.
