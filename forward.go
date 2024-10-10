@@ -101,11 +101,20 @@ func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		type policyTagKey string
 		k := policyTagKey("DNSPolicies")
 		v := ctx.Value(k)
+		skip_forward := false
+
 		if dnsPolicies, ok := v.([]string); ok {
 			if !slices.Contains(dnsPolicies, f.spr_policy_target) {
-				return plugin.NextOrFailure(f.Name(), f.Next, ctx, w, r)
+				skip_forward = true
 			}
+		} else {
+			skip_forward = true
 		}
+
+		if skip_forward {
+			return plugin.NextOrFailure(f.Name(), f.Next, ctx, w, r)
+		}
+
 	}
 
 	if f.maxConcurrent > 0 {
