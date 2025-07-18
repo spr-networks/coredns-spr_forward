@@ -47,6 +47,7 @@ type Forward struct {
 
 	tlsConfig     *tls.Config
 	tlsServerName string
+	tlsServerNames map[string]string // Map from IP address to TLS server name
 	maxfails      uint32
 	expire        time.Duration
 	maxConcurrent int64

@@ -103,6 +103,11 @@ func TestSetupTLS(t *testing.T) {
 				tls
 			}`, false, "", ""},
 		{`forward . tls://127.0.0.1`, false, "", ""},
+		// Test new per-IP TLS server name syntax
+		{`forward . tls://1.1.1.1 tls://9.9.9.9 {
+				tls_servername 1.1.1.1 cloudflare-dns.com
+				tls_servername 9.9.9.9 dns.quad9.net
+			}`, false, "", ""},
 	}
 
 	for i, test := range tests {

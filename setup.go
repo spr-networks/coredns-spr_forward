@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -143,6 +144,7 @@ func parseStanza(c *caddy.Controller) (*Forward, error) {
 		}
 	}
 
+	// Set the global server name if provided (for backward compatibility)
 	if f.tlsServerName != "" {
 		f.tlsConfig.ServerName = f.tlsServerName
 	}
@@ -154,7 +156,26 @@ func parseStanza(c *caddy.Controller) (*Forward, error) {
 	for i := range f.proxies {
 		// Only set this for proxies that need it.
 		if transports[i] == transport.TLS {
-			f.proxies[i].SetTLSConfig(f.tlsConfig)
+			// Create a copy of the TLS config for this proxy
+			proxyTLSConfig := f.tlsConfig.Clone()
+			
+			// Extract IP from proxy address
+			proxyAddr := f.proxies[i].Addr()
+			host, _, err := net.SplitHostPort(proxyAddr)
+			if err == nil {
+				// Check if we have a specific TLS server name for this IP
+				if serverName, ok := f.tlsServerNames[host]; ok {
+					proxyTLSConfig.ServerName = serverName
+				} else if f.tlsServerName != "" {
+					// Fall back to the global TLS server name
+					proxyTLSConfig.ServerName = f.tlsServerName
+				}
+			} else if f.tlsServerName != "" {
+				// If we can't parse the address, use the global server name
+				proxyTLSConfig.ServerName = f.tlsServerName
+			}
+			
+			f.proxies[i].SetTLSConfig(proxyTLSConfig)
 		}
 		f.proxies[i].SetExpire(f.expire)
 		f.proxies[i].GetHealthchecker().SetRecursionDesired(f.opts.HCRecursionDesired)
@@ -250,7 +271,20 @@ func parseBlock(c *caddy.Controller, f *Forward) error {
 		if !c.NextArg() {
 			return c.ArgErr()
 		}
-		f.tlsServerName = c.Val()
+		// Check if we have a second argument (IP address)
+		firstArg := c.Val()
+		if c.NextArg() {
+			// New format: tls_servername <ip> <name>
+			ip := firstArg
+			serverName := c.Val()
+			if f.tlsServerNames == nil {
+				f.tlsServerNames = make(map[string]string)
+			}
+			f.tlsServerNames[ip] = serverName
+		} else {
+			// Old format: tls_servername <name>
+			f.tlsServerName = firstArg
+		}
 	case "expire":
 		if !c.NextArg() {
 			return c.ArgErr()
